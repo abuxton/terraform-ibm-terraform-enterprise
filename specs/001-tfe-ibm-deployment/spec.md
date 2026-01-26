@@ -2,8 +2,46 @@
 
 **Feature Branch**: `001-tfe-ibm-deployment`
 **Created**: 2025-01-26
+**Updated**: 2026-01-26 (clarifications added)
 **Status**: Draft
 **Input**: User description: "Terraform Enterprise deployment on IBM Cloud, based on the patterns and standards from the terraform-aws-terraform-enterprise-hvd module"
+
+## Design Clarifications
+
+The following clarifications were gathered to refine the specification:
+
+### Deployment Approach
+- **Operational Mode**: Default to "external" (single-instance) mode for simplicity, but design all components (networking, load balancing, storage) to easily upgrade to "active-active" mode without significant reconfiguration. This provides a clear migration path as deployment needs mature.
+
+### Sizing & Scale
+- **Target Deployment Size**: Medium enterprise deployment (50-200 users, 100-500 workspaces, multiple teams). This sets reasonable defaults for:
+  - VSI profiles: bx2-8x32 (8 vCPU, 32GB RAM)
+  - PostgreSQL: 4 vCPU, 16GB RAM with high availability
+  - Object Storage: Multi-region standard storage class
+  - Redis (active-active): 12GB memory minimum
+
+### Network Architecture
+- **Endpoint Strategy**: Configurable architecture supporting both public and private endpoint patterns:
+  - **Public Mode**: Internet-accessible load balancer with public endpoints
+  - **Private Mode**: Private endpoints for all services, requires VPN/Direct Link
+  - **Hybrid Mode**: Private backend services with public load balancer (recommended default)
+  - Module variables control endpoint type for each service independently
+
+### Security Baseline
+- **Default Security Posture**: Enhanced security configuration including:
+  - IBM Cloud Secrets Manager integration for all sensitive data (license, certificates, passwords)
+  - IBM Cloud Key Protect for encryption key management (data at rest)
+  - TLS 1.2+ for all encrypted communications (data in transit)
+  - IBM Cloud Activity Tracker for audit logging
+  - Security groups with least-privilege firewall rules
+  - Option to upgrade to Hyper Protect Crypto Services for FIPS 140-2 Level 4 compliance
+
+### Backup & Recovery
+- **Approach**: Flexible backup strategy without prescriptive RPO/RTO targets:
+  - PostgreSQL automated backups enabled (configurable retention 1-35 days)
+  - Object Storage versioning enabled for artifact protection
+  - Point-in-time recovery capability through database continuous backups
+  - Users define their own recovery objectives based on business requirements
 
 ## User Scenarios & Testing *(mandatory)*
 
