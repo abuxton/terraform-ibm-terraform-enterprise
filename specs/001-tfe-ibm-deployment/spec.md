@@ -250,7 +250,7 @@ Enterprise security teams need to deploy TFE in air-gapped or restricted network
 - **FR-069**: Module MUST support common resource tagging for cost allocation and governance
 - **FR-070**: Module MUST be compatible with Terraform versions 1.9 and higher
 - **FR-071**: Module MUST use IBM Cloud Terraform Provider version 1.70.0 or higher
-- **FR-072**: Module MUST utilize the variable naming convention established in the hashicorp/terarform-aws-terraform-enterprise-hvd module.
+- **FR-072**: Module MUST utilize the variable naming convention established in the hashicorp/terraform-aws-terraform-enterprise-hvd module.
 
 ### Key Entities
 
