@@ -44,11 +44,17 @@ rule "terraform_comment_syntax" {
 	enabled = true
 }
 
-# AWS #####################################################################
-# https://github.com/terraform-linters/tflint-ruleset-aws/blob/master/docs/rules/README.md
+# IBM Cloud ###############################################################
+# https://github.com/terraform-linters/tflint-ruleset-ibm
 
-# plugin "aws" {
+plugin "terraform" {
+  enabled = true
+  preset  = "recommended"
+}
+
+# Note: IBM Cloud plugin available if needed
+# plugin "ibm" {
 #   enabled = true
-#   version = "0.44.0"
-#   source  = "github.com/terraform-linters/tflint-ruleset-aws"
+#   version = "0.1.0"
+#   source  = "github.com/terraform-linters/tflint-ruleset-ibm"
 # }

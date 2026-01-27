@@ -1,0 +1,33 @@
+# Example terraform.tfvars for basic TFE deployment
+# Copy this file to terraform.tfvars and fill in your values
+
+# Core Configuration
+resource_group_id    = "your-resource-group-id"
+region               = "us-south"
+vpc_id               = "your-vpc-id"
+friendly_name_prefix = "prod-tfe"
+
+# TFE Configuration
+tfe_hostname = "tfe.example.com"
+
+# Network Configuration
+subnet_ids    = ["subnet-id-zone-1", "subnet-id-zone-2"]
+lb_subnet_ids = ["lb-subnet-id-zone-1", "lb-subnet-id-zone-2"]
+ssh_key_ids   = ["your-ssh-key-name"]
+
+# Security
+tls_certificate_crn   = "crn:v1:bluemix:public:secrets-manager:us-south:a/..."
+allowed_ingress_cidrs = ["10.0.0.0/8", "172.16.0.0/12"]
+
+# Storage
+cos_bucket_name = "tfe-artifacts-prod"
+kms_key_crn     = "crn:v1:bluemix:public:kms:us-south:a/..."
+
+# Secrets Manager
+secrets_manager_instance_crn       = "crn:v1:bluemix:public:secrets-manager:us-south:a/..."
+tfe_license_secret_crn             = "crn:v1:bluemix:public:secrets-manager:us-south:a/.../secret/..."
+tfe_encryption_password_secret_crn = "crn:v1:bluemix:public:secrets-manager:us-south:a/.../secret/..."
+database_password_secret_crn       = "crn:v1:bluemix:public:secrets-manager:us-south:a/.../secret/..."
+
+# Tags
+common_tags = ["env:production", "owner:platform-team"]

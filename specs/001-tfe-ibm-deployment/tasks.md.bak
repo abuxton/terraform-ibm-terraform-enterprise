@@ -104,12 +104,12 @@ All paths are relative to repository root:
 
 #### Testing for User Story 1
 
-- [X] T044 [US1] Create tests/basic_deployment.tftest.hcl with test structure and provider configuration
-- [X] T045 [US1] Add setup_prerequisites run block to tests/basic_deployment.tftest.hcl
-- [X] T046 [US1] Add validate_plan run block to tests/basic_deployment.tftest.hcl (command = plan)
-- [X] T047 [US1] Add deploy_tfe run block to tests/basic_deployment.tftest.hcl (command = apply, assert TFE URL output)
-- [X] T048 [US1] Create tests/fixtures/setup/ helper module for test prerequisites (VPC, subnets, SSH key)
-- [X] T049 [US1] Create tests/fixtures/test.tfvars with common test variable values
+- [ ] T044 [US1] Create tests/basic_deployment.tftest.hcl with test structure and provider configuration
+- [ ] T045 [US1] Add setup_prerequisites run block to tests/basic_deployment.tftest.hcl
+- [ ] T046 [US1] Add validate_plan run block to tests/basic_deployment.tftest.hcl (command = plan)
+- [ ] T047 [US1] Add deploy_tfe run block to tests/basic_deployment.tftest.hcl (command = apply, assert TFE URL output)
+- [ ] T048 [US1] Create tests/fixtures/setup/ helper module for test prerequisites (VPC, subnets, SSH key)
+- [ ] T049 [US1] Create tests/fixtures/test.tfvars with common test variable values
 - [X] T050 [P] [US1] Create examples/basic/ directory with main.tf, variables.tf, outputs.tf
 - [X] T051 [P] [US1] Create examples/basic/terraform.tfvars.example with sample values
 - [X] T052 [P] [US1] Create examples/basic/README.md with deployment instructions
