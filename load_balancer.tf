@@ -95,8 +95,9 @@ resource "ibm_is_lb_listener" "tfe_http_redirect" {
   # Redirect to HTTPS
   https_redirect {
     http_status_code = 301
-    listener         = ibm_is_lb_listener.tfe_https.listener_id
-    uri              = "/"
+    listener {
+      id = ibm_is_lb_listener.tfe_https.listener_id
+    }
   }
 }
 

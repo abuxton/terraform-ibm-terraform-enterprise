@@ -34,10 +34,9 @@ resource "ibm_is_security_group_rule" "compute_ingress_https" {
   group     = ibm_is_security_group.compute.id
   direction = "inbound"
   remote    = ibm_is_security_group.load_balancer.id
-  tcp {
-    port_min = 443
-    port_max = 443
-  }
+  protocol  = "tcp"
+  port_min  = 443
+  port_max  = 443
 }
 
 # Allow HTTP from load balancer (for health checks)
@@ -45,10 +44,9 @@ resource "ibm_is_security_group_rule" "compute_ingress_http" {
   group     = ibm_is_security_group.compute.id
   direction = "inbound"
   remote    = ibm_is_security_group.load_balancer.id
-  tcp {
-    port_min = 8080
-    port_max = 8080
-  }
+  protocol  = "tcp"
+  port_min  = 8080
+  port_max  = 8080
 }
 
 # Allow SSH from allowed CIDRs (for admin access)
@@ -57,10 +55,9 @@ resource "ibm_is_security_group_rule" "compute_ingress_ssh" {
   group     = ibm_is_security_group.compute.id
   direction = "inbound"
   remote    = each.value
-  tcp {
-    port_min = 22
-    port_max = 22
-  }
+  protocol  = "tcp"
+  port_min  = 22
+  port_max  = 22
 }
 
 # Allow all outbound traffic (for package installation, Docker pulls, etc.)
@@ -87,10 +84,9 @@ resource "ibm_is_security_group_rule" "lb_ingress_https" {
   group     = ibm_is_security_group.load_balancer.id
   direction = "inbound"
   remote    = each.value
-  tcp {
-    port_min = 443
-    port_max = 443
-  }
+  protocol  = "tcp"
+  port_min  = 443
+  port_max  = 443
 }
 
 # Allow outbound to compute instances
@@ -116,10 +112,9 @@ resource "ibm_is_security_group_rule" "db_ingress_postgres" {
   group     = ibm_is_security_group.database.id
   direction = "inbound"
   remote    = ibm_is_security_group.compute.id
-  tcp {
-    port_min = 5432
-    port_max = 5432
-  }
+  protocol  = "tcp"
+  port_min  = 5432
+  port_max  = 5432
 }
 
 # Allow Redis from compute instances (active-active mode only)
@@ -128,10 +123,9 @@ resource "ibm_is_security_group_rule" "db_ingress_redis" {
   group     = ibm_is_security_group.database.id
   direction = "inbound"
   remote    = ibm_is_security_group.compute.id
-  tcp {
-    port_min = 6379
-    port_max = 6379
-  }
+  protocol  = "tcp"
+  port_min  = 6379
+  port_max  = 6379
 }
 
 # No outbound rules needed for database (databases don't initiate connections)

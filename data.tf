@@ -55,3 +55,20 @@ data "ibm_is_ssh_key" "tfe" {
   for_each = toset(var.ssh_key_ids)
   name     = each.value
 }
+
+# Database connection information
+data "ibm_database_connection" "postgresql" {
+  deployment_id = ibm_database.postgresql.id
+  user_type     = "database"
+  user_id       = "admin"
+  endpoint_type = "private" # Use private endpoint for security
+}
+
+# Redis connection information (only when active-active mode)
+data "ibm_database_connection" "redis" {
+  count         = local.is_active_active ? 1 : 0
+  deployment_id = ibm_database.redis[0].id
+  user_type     = "database"
+  user_id       = "admin"
+  endpoint_type = "private" # Use private endpoint for security
+}

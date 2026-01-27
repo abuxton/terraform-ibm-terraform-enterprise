@@ -7,6 +7,16 @@
  * in "external" operational mode.
  */
 
+terraform {
+  required_version = ">= 1.9"
+  required_providers {
+    ibm = {
+      source  = "ibm-cloud/ibm"
+      version = ">= 1.70.0"
+    }
+  }
+}
+
 module "tfe" {
   source = "../.."
 

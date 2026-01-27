@@ -43,16 +43,16 @@ resource "ibm_is_instance_template" "tfe" {
     tfe_image                          = local.tfe_image
     tfe_license_secret_crn             = var.tfe_license_secret_crn
     tfe_encryption_password_secret_crn = var.tfe_encryption_password_secret_crn
-    database_host                      = ibm_database.postgresql.connectionstrings[0].hosts[0].hostname
-    database_port                      = ibm_database.postgresql.connectionstrings[0].hosts[0].port
-    database_name                      = ibm_database.postgresql.name
+    database_host                      = data.ibm_database_connection.postgresql.postgres[0].hosts[0].hostname
+    database_port                      = data.ibm_database_connection.postgresql.postgres[0].hosts[0].port
+    database_name                      = data.ibm_database_connection.postgresql.postgres[0].database
     database_password_secret_crn       = var.database_password_secret_crn
     cos_bucket_name                    = var.cos_bucket_name
     cos_region                         = var.region
     secrets_manager_region             = var.region
     is_active_active                   = local.is_active_active
-    redis_host                         = local.is_active_active ? ibm_database.redis[0].connectionstrings[0].hosts[0].hostname : ""
-    redis_port                         = local.is_active_active ? ibm_database.redis[0].connectionstrings[0].hosts[0].port : 0
+    redis_host                         = local.is_active_active ? data.ibm_database_connection.redis[0].rediss[0].hosts[0].hostname : ""
+    redis_port                         = local.is_active_active ? data.ibm_database_connection.redis[0].rediss[0].hosts[0].port : 0
     redis_password_secret_crn          = local.is_active_active ? var.redis_password_secret_crn : ""
   })
 
@@ -62,7 +62,7 @@ resource "ibm_is_instance_template" "tfe" {
   }
 
   resource_group = var.resource_group_id
-  tags           = local.common_tags
+  # Note: instance_template does not support tags
 }
 
 #######################################

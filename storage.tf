@@ -82,19 +82,9 @@ resource "ibm_cos_bucket" "tfe" {
   # }
 }
 
-#######################################
-# Bucket CORS Configuration (for TFE API access)
-#######################################
-
-resource "ibm_cos_bucket_cors_configuration" "tfe" {
-  bucket_crn      = ibm_cos_bucket.tfe.crn
-  bucket_location = ibm_cos_bucket.tfe.region_location
-
-  cors_rule {
-    allowed_headers = ["*"]
-    allowed_methods = ["GET", "PUT", "POST", "DELETE", "HEAD"]
-    allowed_origins = ["https://${var.tfe_hostname}"]
-    expose_headers  = ["ETag", "x-amz-request-id"]
-    max_age_seconds = 3600
-  }
-}
+# NOTE: COS bucket CORS configuration must be managed outside of Terraform
+# using the IBM Cloud CLI or Console, as the ibm_cos_bucket_cors_configuration
+# resource type does not exist in the provider.
+# 
+# To configure CORS for TFE:
+# ibmcloud cos bucket-cors-put --bucket BUCKET_NAME --cors-configuration file://cors-rules.json
