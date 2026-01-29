@@ -37,16 +37,33 @@
 
 ### 1.2 Specification-Driven Development
 
-**Principle**: Infrastructure code generation MUST be driven by explicit specifications, not implicit assumptions.
+**Principle**: Infrastructure code generation MUST be driven by explicit specifications, not implicit assumptions. Specifications are the source of truth for all infrastructure implementations.
 
-**Rationale**: "Vibe-coding" leads to inconsistent implementations, security gaps, and maintenance nightmares. Specifications create auditable decision trails.
+**Rationale**: "Vibe-coding" leads to inconsistent implementations, security gaps, and maintenance nightmares. Specifications create auditable decision trails and enable traceability between requirements and code. Spec-driven development ensures all infrastructure changes are intentional, documented, and reversible.
+
+**Specification Requirements**:
+
+- ALL infrastructure changes MUST be preceded by a written specification document
+- Specifications MUST include:
+  - **Purpose**: Clear business objective and use case
+  - **Scope**: What resources/systems are affected
+  - **Compliance Requirements**: Security, regulatory, and organizational standards
+  - **Performance Needs**: Scalability, availability, and performance requirements
+  - **Cost Constraints**: Budget limitations and cost optimization expectations
+  - **Success Criteria**: Measurable outcomes for validation
+  - **Acceptance Tests**: How to verify the infrastructure meets requirements
+- Specifications MUST be stored in version control (e.g., `/specs` directory) alongside code
+- Each specification MUST have a unique identifier (e.g., `SPEC-001`, `APP-INFRA-2025-01`)
 
 **Implementation**:
 
 - You MUST request clarification on ambiguous requirements before generating code
-- Generated code MUST include comments referencing the specification requirements it implements
-- Infrastructure specifications MUST define: purpose, compliance requirements, scalability needs, and cost constraints
+- You MUST refuse to generate code without a documented specification
+- Generated code MUST include inline comments referencing the specification identifier and specific requirements it implements
+- Example: `# Per SPEC-001: Enable encryption at rest for compliance with SOC2`
+- All specification changes MUST flow through the same branch approval process as code changes
 - You MUST validate specifications against organizational constraints before code generation
+- You MUST create acceptance tests based on specification success criteria
 
 ### 1.3 Security-First Automation
 
@@ -113,19 +130,39 @@
 └── .gitignore
 ```
 
-**Git Branch Strategy**:
+**Git Branch Strategy (Gitflow)**:
 
-- `feature/*` branches → Development work (branched from `dev`)
-- `dev` branch → Development environment
-- `staging` branch → Staging environment
-- `main` branch → Production environment
+This project uses Gitflow branching model with the following branch structure:
+
+**Long-Lived Branches**:
+- `main` → Production environment (stable, release-ready code)
+- `staging` → Staging environment (pre-production validation)
+- `dev` → Development environment (integration branch for feature work)
+
+**Short-Lived Branches** (branched from `dev`, merged back via pull request):
+- `feature/*` → Feature development (naming: `feature/short-description`, e.g., `feature/add-vpc-flow-logs`)
+- `bugfix/*` → Bug fixes (naming: `bugfix/issue-number-description`, e.g., `bugfix/123-security-group-rules`)
+- `hotfix/*` → Emergency production fixes (branched from `main`, naming: `hotfix/issue-description`)
+- `refactor/*` → Code refactoring work (naming: `refactor/description`, e.g., `refactor/consolidate-locals`)
+- `chore/*` → Maintenance tasks (naming: `chore/description`, e.g., `chore/update-terraform-version`)
+
+**Branch Naming Conventions**:
+- Prefix with branch type: `feature/`, `bugfix/`, `hotfix/`, `refactor/`, `chore/`
+- Use lowercase with hyphens for spacing
+- Keep names descriptive but concise (max 50 characters total)
+- Include ticket/issue number when applicable (e.g., `feature/123-vpc-configuration`)
+- Invalid: `Feature/VPC`, `my_feature`, `feature_vpc_setup`
+- Valid: `feature/vpc-setup`, `bugfix/123-sg-rules`, `hotfix/security-patch`
 
 **Branch Protection Rules**:
 
-- Direct commits to `dev`, `staging`, and `main` branches are PROHIBITED
-- All changes MUST be made via feature branches off `dev`
-- When creating a `feature/*` branch, make sure you are on the `dev` branch. If you are not, first switch to the `dev` branch before creating the new `feature/*` branch.
-- Pull requests with human review REQUIRED for all merges
+- Direct commits to `main`, `staging`, and `dev` branches are STRICTLY PROHIBITED
+- All changes MUST originate from properly-named short-lived branches
+- When creating a feature/bugfix branch, ensure you are on the `dev` branch. If not, switch first: `git checkout dev`
+- Branch creation: `git checkout -b feature/description`
+- Pull requests with mandatory human review REQUIRED for all merges
+- Pull requests MUST reference the specification identifier (e.g., "Implements SPEC-001")
+- Each PR MUST include a link to the related specification document
 
 **Rules**:
 
@@ -420,30 +457,84 @@ module "vpc" {
 - You SHOULD document expected variable sets in `README.md`
 - Application-specific variables MUST be defined at workspace level, not in code
 
-### 4.3 Environment Promotion
+### 4.3 Environment Promotion (Gitflow Workflow)
 
-**Standard**: Changes MUST flow feature → dev → staging → main branches with mandatory human review at each stage.
+**Standard**: Changes flow through gitflow branches with specification verification and mandatory human review at each stage.
 
-**Git Branch Workflow**:
+**Specification-Driven Promotion Workflow**:
 
-1. **Feature Development**: Create feature branch from `dev` branch (`feature/description`)
-2. **Development Merge**: Pull request from feature branch to `dev` branch (requires human review)
-3. **Staging Promotion**: Pull request from `dev` to `staging` branch (requires human review after dev validation)
-4. **Production Promotion**: Pull request from `staging` to `main` branch (requires human review after staging validation)
+1. **Specification Phase**:
+   - Create specification document in `/specs` directory (e.g., `SPEC-001-vpc-enhancement.md`)
+   - Include all requirements, compliance needs, success criteria
+   - Commit and push specification to `dev` branch
+   - Obtain stakeholder approval on specification
+
+2. **Feature Development Phase**:
+   - Create feature branch from `dev`: `git checkout -b feature/spec-001-description`
+   - Branch name MUST reference the specification ID
+   - Generate code per specification requirements
+   - Add inline comments linking code to specification sections
+   - Commit code with message: `feat: Implement SPEC-001 - Description [feature/spec-001-name]`
+
+3. **Development Integration** (PR: feature → dev):
+   - Create pull request from feature branch to `dev`
+   - PR title MUST include specification ID: `feat: Implement SPEC-001 - Description`
+   - PR description MUST link to specification: "Implements specification `SPEC-001-vpc-enhancement.md`"
+   - Human review validates code matches specification
+   - Reviewer verifies specification acceptance criteria are met
+   - Upon approval: Merge and delete feature branch
+
+4. **Staging Promotion** (PR: dev → staging):
+   - After dev environment validation
+   - Create pull request from `dev` to `staging`
+   - Title: `release: Promote SPEC-001 implementation to staging`
+   - Reference all associated specifications in PR description
+   - Infrastructure team reviews for staging validation
+   - Upon approval: Merge (do NOT delete `dev`)
+   - Staging workspace automatically deploys via VCS workflow
+
+5. **Production Promotion** (PR: staging → main):
+   - After staging environment validation and sign-off
+   - Create pull request from `staging` to `main`
+   - Title: `release: Promote to production - SPEC-001`
+   - Require explicit approval from platform/infrastructure leads
+   - Include change summary and rollback procedure
+   - Upon approval: Merge (do NOT delete `staging`)
+   - Production workspace automatically deploys via VCS workflow
+
+**Hotfix Workflow** (Emergency Production Fixes):
+
+- Branch from `main`: `git checkout -b hotfix/issue-description`
+- Apply critical fix with specification reference
+- Create PRs to both `main` and `staging` for consistency
+- After merge to `main`: backport changes to `staging` and `dev`
+- Document hotfix specification for future review
 
 **Branch Protection Requirements**:
 
-- Direct commits to `dev`, `staging`, and `main` branches are STRICTLY PROHIBITED
-- All changes MUST originate from feature branches
+- Direct commits to `main`, `staging`, and `dev` branches are STRICTLY PROHIBITED
+- All changes MUST originate from properly-named feature/bugfix/hotfix/refactor/chore branches
 - Human-in-the-loop review REQUIRED for ALL pull requests
-- Feature branches MUST be deleted after successful merge to `dev`
+- Pull request reviews MUST verify:
+  - Specification ID is referenced
+  - Code implements specification requirements
+  - Acceptance criteria are met
+  - Branch naming follows gitflow conventions
+- Feature branches MUST be deleted after successful merge
+- Long-lived branches (`dev`, `staging`, `main`) are NEVER deleted
 
-**Rules**:
+**Promotion Rules**:
 
 - You MUST generate identical code structure across all branches
-- Environment-specific values MUST be externalized to workspace variables (configured during onboarding)
-- Production deployments (`main` branch) REQUIRE manual approval (AI-generated code cannot bypass)
-- Workspace-level security policies enforce stricter rules for production workspaces
+- Environment-specific values MUST be externalized to workspace variables
+- Each promotion MUST include specification verification checklist
+- Production deployments REQUIRE:
+  - Specification approval
+  - Staging validation sign-off
+  - Platform team explicit approval
+  - Rollback plan documented
+- Workspace-level security policies enforce stricter rules for production
+- All specification changes undergo same promotion workflow as code changes
 
 ---
 
@@ -589,20 +680,186 @@ terraform {
 
 ---
 
-## VIII. AI Agent Behavior and Constraints
+## VIII. Specification Management
 
-### 8.1 Prerequisites Validation
+### 7.1 Specification Creation and Storage
 
-**Constraint**: You MUST validate HCP Terraform prerequisites before any operations.
+**Standard**: Specifications are first-class artifacts stored in version control alongside code.
+
+**Specification Directory Structure**:
+
+```
+/
+├── specs/
+│   ├── SPEC-001-vpc-enhancement.md
+│   ├── SPEC-002-database-migration.md
+│   └── README.md (index of all specifications)
+├── main.tf
+├── variables.tf
+└── ...
+```
+
+**Specification Naming Convention**:
+- Format: `SPEC-###-short-title.md`
+- Example: `SPEC-001-vpc-enhancement.md`, `SPEC-042-lambda-deployment.md`
+- Increment counter sequentially
+- Use lowercase with hyphens
+
+**Specification Template**:
+
+```markdown
+# SPEC-001: VPC Enhancement for High Availability
+
+**Status**: Draft | Approved | Implemented | Superseded
+**Author**: Team Name
+**Created**: YYYY-MM-DD
+**Updated**: YYYY-MM-DD
+**Specification ID**: SPEC-001
+
+## Purpose
+[Clear business objective and use case]
+
+## Scope
+[Affected resources and systems]
+
+## Compliance Requirements
+[Security, regulatory, organizational standards]
+
+## Performance and Scalability
+[Availability, throughput, and scaling requirements]
+
+## Cost Constraints
+[Budget and optimization expectations]
+
+## Functional Requirements
+1. [Requirement]
+2. [Requirement]
+
+## Technical Requirements
+1. [Technical detail]
+2. [Technical detail]
+
+## Success Criteria
+- [ ] Criterion 1
+- [ ] Criterion 2
+
+## Acceptance Tests
+1. Test procedure 1
+2. Test procedure 2
+
+## Related Specifications
+- SPEC-002 (Dependency)
+
+## Implementation Notes
+[Any additional context for implementers]
+
+## Approval
+- [ ] Product Owner
+- [ ] Platform Team
+- [ ] Security Team
+```
+
+### 7.2 Specification Validation
+
+**Standard**: Specifications MUST be validated before implementation begins.
+
+**Validation Checklist**:
+
+- [ ] Specification has unique identifier (SPEC-###)
+- [ ] Purpose is clear and business-aligned
+- [ ] Scope is well-defined
+- [ ] All compliance requirements documented
+- [ ] Success criteria are measurable
+- [ ] Acceptance tests are specific and testable
+- [ ] No conflicting requirements within specification
+- [ ] Dependencies on other specifications documented
+- [ ] Cost implications considered
+- [ ] Required approvals obtained
+
+**Validation Process**:
+
+1. Author creates specification document
+2. Specification added to `/specs` directory
+3. Specification review via pull request (feature → dev)
+4. Stakeholders review and comment
+5. Upon approval, specification merged to dev
+6. Implementation can begin on approved specification
+
+### 7.3 Specification Lifecycle
+
+**Specification States**:
+
+- **Draft**: Specification under development, not yet approved
+- **Approved**: Specification reviewed and accepted for implementation
+- **In-Progress**: Specification is being implemented (feature branch exists)
+- **Implemented**: Code merged and deployed to dev
+- **Staged**: Implementation in staging environment
+- **Promoted**: Implementation in production
+- **Superseded**: Replaced by newer specification
+- **Archived**: No longer applicable
+
+**Specification Updates**:
+
+- Minor clarifications: Direct commits to specification
+- Requirement changes: Create new specification, reference original
+- Supersession: Mark original as "Superseded by SPEC-XXX"
+
+### 7.4 Specification Traceability
+
+**Standard**: Code MUST be traceable back to specifications.
+
+**Implementation**:
+
+- Every code block MUST reference its specification
+- Branch names MUST include specification ID
+- Pull requests MUST reference specification
+- Comments MUST link code to specification sections
+
+**Code Example**:
+
+```hcl
+# SPEC-001: Enable Flow Logs for Network Monitoring
+# Requirement: Enable VPC Flow Logs for security compliance
+# Success Criteria: VPC sends logs to CloudWatch Logs
+resource "aws_flow_log" "vpc_flow_logs" {
+  iam_role_arn    = aws_iam_role.vpc_flow_logs.arn
+  log_destination = aws_cloudwatch_log_group.vpc_flow_logs.arn
+  traffic_type    = "ALL"
+  vpc_id          = aws_vpc.main.id
+
+  tags = {
+    Specification = "SPEC-001"
+    Purpose       = "Network Monitoring"
+  }
+}
+```
+
+---
+
+## IX. AI Agent Behavior and Constraints
+
+### 9.1 Prerequisites Validation
+
+**Constraint**: You MUST validate both specification and HCP Terraform prerequisites before any operations.
 
 **Requirements**:
 
-- The `/specify` command MUST always check for required HCP Terraform configuration details
-- You MUST NOT proceed with Terraform operations without complete prerequisites
+- The `/specify` command MUST always validate specification-driven prerequisites
+- You MUST NOT proceed with code generation without an approved specification
+- You MUST request a written specification before generating infrastructure code
+- You MUST validate HCP Terraform configuration details from the current remote git repository
 - Missing configuration details MUST be surfaced to the user with clear instructions
 - All Terraform MCP server tool calls MUST use the validated configuration values
 
-**Mandatory Prerequisites**:
+**Specification Prerequisites**:
+
+- Specification document exists in `/specs` directory
+- Specification has unique identifier (SPEC-###)
+- Specification includes all required sections (purpose, scope, requirements, success criteria)
+- Specification has been reviewed and approved
+- Specification acceptance criteria are measurable and testable
+
+**HCP Terraform Prerequisites**:
 
 - HCP Terraform Organization Name
 - HCP Terraform Project Name
@@ -610,68 +867,108 @@ terraform {
 - HCP Terraform Workspace Name for Staging environment
 - HCP Terraform Workspace Name for Prod environment
 
-### 8.2 Scope Boundaries
+**Workflow**:
 
-**Constraint**: You MUST operate within defined consumption patterns.
+1. User provides or references specification (e.g., "Implement SPEC-001")
+2. You MUST validate specification exists and is approved
+3. You validate HCP Terraform configuration details
+4. Proceed with code generation only when ALL prerequisites are met
+
+### 9.2 Scope Boundaries
+
+**Constraint**: You MUST operate within defined consumption patterns and honor specification-driven development.
 
 **In Scope**:
 
+- Reviewing and validating specifications for completeness and compliance
+- Suggesting improvements to specifications before implementation
 - Searching for and composing infrastructure from approved private modules using `search_private_modules` tool
+- Generating code that strictly implements specification requirements
+- Creating/updating feature branches with proper gitflow naming conventions
 - Generating environment-specific variable definitions
-- Creating documentation and README files
+- Creating and updating documentation with specification references
+- Generating acceptance tests based on specification success criteria
 - Suggesting workspace configuration
-- Explaining Terraform concepts to less experienced users
+- Explaining Terraform concepts and specification-driven development practices
+- Creating specification documents when not provided by user
 
 **Out of Scope**:
 
+- Generating code without an approved specification
 - Creating new Terraform modules (platform team responsibility)
 - Modifying or forking existing modules without explicit approval
 - Bypassing policy controls or suggesting workarounds
 - Direct resource creation without module encapsulation
 - Workspace RBAC configuration (security team responsibility)
+- Merging pull requests (human review required)
+- Deleting long-lived branches (dev, staging, main)
 
-### 8.3 Error Handling and Transparency
+### 9.3 Error Handling and Transparency
 
-**Standard**: You MUST acknowledge limitations and uncertainties.
+**Standard**: You MUST acknowledge limitations, uncertainties, and specification gaps.
 
 **Rules**:
 
+- You MUST refuse code generation requests that lack a written specification
+- When no specification exists, you MUST help the user CREATE one before code generation
+- When specifications are ambiguous or incomplete, you MUST request clarification before proceeding
 - You MUST use `search_private_modules` tool to find appropriate modules before generating infrastructure code
-- When multiple approaches exist, you MUST explain tradeoffs
-- When specifications are ambiguous, you MUST request clarification before proceeding
+- When multiple approaches exist, you MUST explain tradeoffs with specification reference
 - When required modules don't exist in the private registry (confirmed via `search_private_modules`), you MUST NOT improvise with raw resources
 - When policy violations are likely, you MUST warn users proactively
+- When specification requirements conflict with security or compliance policies, you MUST highlight the conflict and request resolution
+- You MUST document all assumptions made during implementation in code comments
 
-### 8.4 Learning and Adaptation
+### 9.4 Learning and Adaptation
 
-**Standard**: You MUST learn from organizational patterns and feedback.
+**Standard**: You MUST learn from organizational patterns, specifications, and feedback.
 
 **Implementation**:
 
-- You SHOULD reference successful prior implementations as patterns
+- You SHOULD reference successful prior specifications and implementations as patterns
+- You SHOULD suggest specification template improvements based on recurring questions
 - You MUST respect organizational customizations to this constitution
 - You SHOULD incorporate policy feedback to avoid repeated violations
+- You SHOULD help teams refine specifications based on implementation learnings
+- You MUST maintain traceability between specifications and implementations for continuous improvement
 
 ---
 
-## IX. Governance and Evolution
+## X. Governance and Evolution
 
-### 9.1 Constitution Updates
+### 10.1 Constitution Updates
 
-**Process**: This constitution evolves with organizational needs.
+**Process**: This constitution evolves with organizational needs, including specification standards.
 
 **Update Authority**:
 
 - Platform team maintains constitution in version control
 - Major changes require review by security and governance teams
 - Application teams MAY propose amendments via pull request
+- Specification best practices are incorporated into constitution updates
 - Constitution version MUST be referenced in AI agent prompts
 
-### 9.2 Exception Process
+**Specification Standard Evolution**:
 
-**Policy**: Deviations require explicit approval and documentation.
+- Successful specification patterns are documented and shared
+- Common specification gaps trigger constitution updates
+- New compliance requirements prompt specification template updates
 
-**Process**:
+### 10.2 Exception Process
+
+**Policy**: Deviations from constitution or specifications require explicit approval and documentation.
+
+**Process for Specification Exceptions**:
+
+1. Document specific specification requirement driving exception
+2. Explain why specification requirement cannot be met
+3. Propose alternative approach with risk assessment
+4. Obtain product owner and platform team approval
+5. Document exception in specification (mark as "Exception Granted")
+6. Implement alternative with exception reference in code comments
+7. Review exception and update specification template if pattern emerges
+
+**Process for Constitution Exceptions**:
 
 1. Document specific requirement driving exception
 2. Propose alternative approach with risk assessment
@@ -679,37 +976,71 @@ terraform {
 4. Document exception in code and centralized exceptions register
 5. Review exception during next policy update cycle
 
-### 9.3 Audit and Compliance
+### 10.3 Audit and Compliance
 
-**Standard**: AI-generated code is subject to same audits as human-authored code.
+**Standard**: AI-generated code and specifications are subject to same audits as human-authored code.
 
 **Requirements**:
 
 - All generated code MUST pass through policy enforcement
-- Periodic audits verify constitution compliance
+- All specifications MUST be approved before implementation
+- Periodic audits verify:
+  - Specification coverage (all infrastructure has supporting specification)
+  - Code-specification traceability (code references its specification)
+  - Compliance with specification requirements
+  - Constitution compliance
 - Non-compliant patterns trigger constitution updates or module improvements
-- Metrics track module adoption rates and AI-generated code quality
+- Specification gaps trigger process improvements
+- Metrics track:
+  - Module adoption rates
+  - AI-generated code quality
+  - Specification approval time
+  - Code-specification traceability rates
 
-### 9.4 Feedback Loop
+### 10.4 Feedback Loop
 
-**Standard**: Continuous improvement through systematic feedback.
+**Standard**: Continuous improvement through systematic feedback on specifications, code, and processes.
 
 **Mechanisms**:
 
-- Application teams provide feedback on module usability
-- Policy violations inform module design improvements
-- AI agent error patterns drive documentation enhancements
+- Application teams provide feedback on module usability and specification effectiveness
+- Policy violations inform module design and specification template improvements
+- Specification gaps drive specification standard refinements
+- AI agent error patterns and specification issues drive documentation enhancements
+- Implementation learnings inform specification best practices
 - Adoption metrics guide platform team priorities
+- Specification reuse patterns identify successful templates
+- Specification exceptions drive constitution updates
 
 ---
 
-## X. Testing and Validation Framework
+## XI. Testing and Validation Framework
 
-### 10.1 Ephemeral Workspace Testing
+### 11.1 Specification-Driven Testing
+
+**Standard**: All testing MUST validate that implementations meet specification requirements.
+
+**Testing Strategy**:
+
+- Tests MUST be based on specification success criteria
+- Test procedures MUST be derived from specification acceptance tests
+- Test results MUST document which specification requirements were validated
+- Failed tests MUST be traced back to specific specification requirements
+
+**Specification Validation Checklist**:
+
+Before testing infrastructure, verify:
+- [ ] Specification is approved
+- [ ] Implementation code references specification ID
+- [ ] Code comments link to specification sections
+- [ ] Success criteria defined in specification
+- [ ] Acceptance tests prepared from specification
+
+### 11.2 Ephemeral Workspace Testing
 
 **Standard**: All AI-generated Terraform code MUST be validated in ephemeral testing environments before promotion.
 
-**Rationale**: Ephemeral workspaces provide safe, isolated environments for testing infrastructure changes without impacting existing environments or incurring long-term costs.
+**Rationale**: Ephemeral workspaces provide safe, isolated environments for testing infrastructure changes without impacting existing environments or incurring long-term costs. Testing validates both code quality and specification compliance.
 
 **Implementation Requirements**:
 
@@ -725,9 +1056,16 @@ terraform {
 - Upon successful testing, you MUST create corresponding workspace variables for the dev workspace
 - Ephemeral workspaces will be automatically destroyed after 2 hours via auto-destroy setting
 
-### 10.2 Automated Testing Workflow
+### 11.3 Automated Testing Workflow
 
-**Standard**: Testing workflow MUST be fully automated using available Terraform MCP server tools.
+**Standard**: Testing workflow MUST be fully automated using available Terraform MCP server tools and MUST validate specification compliance.
+
+**Pre-Testing Specification Verification**:
+
+1. Confirm specification exists and is approved
+2. Extract success criteria from specification
+3. Prepare acceptance tests from specification requirements
+4. Document which specification requirements each test validates
 
 **Testing Process**:
 
@@ -764,15 +1102,16 @@ terraform {
    - Delete the ephemeral workspace to minimize costs (auto-destroy will handle cleanup if manual deletion is not performed)
    - Provide clear success/failure status to the user
 
-### 10.3 Variable Management for Testing
+### 11.4 Variable Management for Testing
 
-**Standard**: Test workspace variables MUST be derived from generated configuration files.
+**Standard**: Test workspace variables MUST be derived from generated configuration files and specification requirements.
 
 **Variable Source Priority**:
 
-1. **variables.tf**: Primary source for identifying required variables, validation rules and type constraints
-2. **User Input**: Values for application-specific variables (when not determinable)
-3. **Workspace Variable Sets**: Pre-configured organizational standards (DO NOT duplicate)
+1. **Specification**: Requirements for variable values and constraints
+2. **variables.tf**: Primary source for identifying required variables, validation rules and type constraints
+3. **User Input**: Values for application-specific variables (when not determinable)
+4. **Workspace Variable Sets**: Pre-configured organizational standards (DO NOT duplicate)
 
 **Variable Creation Rules**:
 
@@ -815,9 +1154,9 @@ variable "database_password" {
 # - Upon success: Create identical variables in dev workspace
 ```
 
-### 10.4 Error Analysis and Remediation
+### 11.5 Error Analysis and Remediation
 
-**Standard**: Test failures MUST be analyzed systematically with actionable remediation guidance.
+**Standard**: Test failures MUST be analyzed systematically with actionable remediation guidance and traced to specification requirements.
 
 **Failure Analysis Process**:
 
@@ -845,16 +1184,19 @@ variable "database_password" {
 - You MUST distinguish between issues requiring code changes vs. workspace configuration
 - You SHOULD provide alternative approaches when the original approach has fundamental issues
 
-### 10.5 Testing Documentation Requirements
+### 11.6 Testing Documentation Requirements
 
-**Standard**: All testing activities MUST be documented for audit and troubleshooting purposes.
+**Standard**: All testing activities MUST be documented for audit and troubleshooting purposes, including specification traceability.
 
 **Documentation Requirements**:
 
+- Specification ID MUST be documented (e.g., "Testing validates SPEC-001")
+- Which specification requirements each test validates MUST be documented
 - Testing process MUST be documented in the README.md
-- Variable requirements MUST be clearly explained
+- Variable requirements MUST be clearly explained with specification context
 - Prerequisites for testing MUST be listed
 - Common testing issues and resolutions MUST be documented
+- Acceptance criteria from specification MUST be included
 
 **README Testing Section Template**:
 
@@ -883,7 +1225,7 @@ This infrastructure code has been validated using ephemeral HCP Terraform worksp
 - (Document any issues encountered during testing)
 ```
 
-### 10.6 Cleanup and Resource Management
+### 11.7 Cleanup and Resource Management
 
 **Standard**: Ephemeral testing resources MUST be properly cleaned up to avoid unnecessary costs.
 
@@ -905,21 +1247,43 @@ This infrastructure code has been validated using ephemeral HCP Terraform worksp
 
 ---
 
-## XI. Implementation Checklist
+## XII. Implementation Checklist
 
 ### For Application Teams Using AI Agents
 
+**Specification-First Workflow**:
+
 - [ ] Clone validated pattern template repository
 - [ ] Review this constitution with your team
-- [ ] Create specification for your infrastructure requirements
+- [ ] Create specification document in `/specs` directory (SPEC-001, SPEC-002, etc.)
+- [ ] Include all specification sections: purpose, scope, compliance, requirements, success criteria
+- [ ] Review specification with stakeholders
+- [ ] Obtain approval from product owner and platform team
+- [ ] Commit specification to dev branch
+
+**Implementation Workflow**:
+
+- [ ] Create feature branch with specification ID: `feature/spec-001-description`
 - [ ] Use `search_private_modules` tool to identify required modules from private registry
 - [ ] Configure IDE with AI assistant (Copilot, Claude Code, etc.)
-- [ ] Generate Terraform code following this constitution
+- [ ] Generate Terraform code following specification requirements
+- [ ] Add inline comments linking code to specification sections
 - [ ] Validate code with `terraform validate` and `terraform fmt` (note: do NOT run `terraform init` or `terraform plan` locally)
-- [ ] Commit and push code to trigger HCP Terraform VCS workflow
+- [ ] Commit code with message: `feat: Implement SPEC-001 - Description`
+- [ ] Push feature branch to remote
+
+**Testing and Promotion Workflow**:
+
+- [ ] Create pull request from feature branch to dev with specification reference
+- [ ] Verify acceptance criteria from specification in PR description
+- [ ] Ensure human review validates code matches specification
+- [ ] Upon approval, merge feature branch and delete it
+- [ ] Commit and push to trigger HCP Terraform VCS workflow
 - [ ] Review plan output in HCP Terraform UI
-- [ ] Deploy to dev environment and validate
-- [ ] Progress through staging to production with approval gates
+- [ ] Deploy to dev environment and validate against specification success criteria
+- [ ] Create PR from dev to staging for promotion
+- [ ] Upon staging sign-off, create PR from staging to main
+- [ ] Progress through production with approval gates
 - [ ] Keep track of any tool call errors and write the errors out to tool_errors_output.log with the details, provide the solution if the tool call was fixed by a subsequent call
 
 ### For Platform Teams
@@ -935,23 +1299,39 @@ This infrastructure code has been validated using ephemeral HCP Terraform worksp
 
 ---
 
-## XI. References and Resources
+## XIII. References and Resources
 
 ### Internal Resources
 
+- Specification Directory: `/specs` (stored in repository)
+- Specification Template: `specs/README.md`
 - Private Module Registry: `app.terraform.io/<org-name>/modules`
 - Policy Repository: `<policy-repo-url>`
 - Platform Team Contact: `<platform-team-contact>`
+
+### Specification Resources
+
+- [GitHub Spec-Kit](https://github.com/github/spec-kit) - Specification-driven development framework
+- [OpenAPI Specification](https://www.openapis.org/) - Specification standards
+- [Arc42 Architecture Documentation](https://arc42.org/) - Architecture specification templates
 
 ### External Resources
 
 - [Terraform Best Practices](https://developer.hashicorp.com/terraform/cloud-docs/recommended-practices)
 - [HashiCorp Style Guide](https://developer.hashicorp.com/terraform/language/style)
-- [GitHub Spec-Kit](https://github.com/github/spec-kit)
+- [Gitflow Workflow](https://www.atlassian.com/git/tutorials/comparing-workflows/gitflow-workflow)
 - [AWS Terraform Provider Best Practices](https://docs.aws.amazon.com/prescriptive-guidance/latest/terraform-aws-provider-best-practices/)
 - [Azure Terraform Best Practices](https://docs.microsoft.com/en-us/azure/developer/terraform/best-practices)
 - [Google Cloud Terraform Best Practices](https://cloud.google.com/docs/terraform/best-practices-for-terraform)
 
 ### Change Log
 
+- **v2.0.0** (January 2026): Added specification-driven development and gitflow branch naming strategies
+  - Requirement: Infrastructure code MUST be driven by written specifications
+  - Requirement: Gitflow branching model with standardized naming conventions
+  - Requirement: Specification traceability in all code and pull requests
+  - Requirement: Specification lifecycle management (Draft → Approved → Implemented → Promoted)
+  - Enhancement: Specification validation checklist and template
+  - Enhancement: Code-specification traceability mechanisms
+  - Enhancement: Testing validates specification success criteria
 - **v1.0.0** (October 2025): Initial constitution release
