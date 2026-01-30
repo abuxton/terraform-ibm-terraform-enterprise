@@ -1247,7 +1247,155 @@ This infrastructure code has been validated using ephemeral HCP Terraform worksp
 
 ---
 
-## XII. Implementation Checklist
+## XII. Task and Issue Management
+
+### 12.1 GitHub Issues Integration
+
+**Principle**: speckit.implement MUST manage all development tasks as GitHub issues to provide visibility, traceability, and collaboration for infrastructure development work.
+
+**Rationale**: GitHub issues provide a centralized platform for task tracking, enabling better collaboration between AI agents, developers, and stakeholders. Issues create an auditable trail of development activities, facilitate discussion, and integrate seamlessly with pull requests and git workflows.
+
+**Implementation Requirements**:
+
+**Access Control**:
+- speckit.implement MUST have read/write access to GitHub Issues API
+- Repository MUST have Issues enabled in repository settings
+- Authentication MUST use GitHub Personal Access Token (PAT) with `repo` scope or GitHub App with appropriate permissions
+- Credentials MUST be securely stored and never committed to version control
+
+**Issue Creation**:
+- speckit.implement MUST create a GitHub issue for each discrete task identified during specification implementation
+- Issues MUST include:
+  - **Title**: Clear, actionable task description (e.g., "Implement VPC module for dev environment")
+  - **Description**: Detailed task requirements, acceptance criteria, and specification reference
+  - **Labels**: Appropriate labels for categorization (e.g., `infrastructure`, `terraform`, `speckit`, specification ID)
+  - **Specification Link**: Reference to the driving specification document
+  - **Dependencies**: Links to related issues or blockers
+- Issue body MUST follow this template:
+
+```markdown
+## Task Description
+[Detailed description of the task]
+
+## Specification Reference
+- **Spec ID**: SPEC-XXX
+- **Spec Link**: [Link to specification document]
+- **Spec Section**: [Relevant section]
+
+## Acceptance Criteria
+- [ ] Criterion 1
+- [ ] Criterion 2
+- [ ] Criterion 3
+
+## Implementation Notes
+[Any relevant technical notes or considerations]
+
+## Related Issues
+- Related to #XX
+- Depends on #YY
+- Blocks #ZZ
+```
+
+**Issue Lifecycle Management**:
+
+1. **Issue Creation** (Initial Task Identification):
+   - Create issue when task is identified from specification
+   - Assign labels: `speckit`, `todo`, specification ID (e.g., `spec-001`)
+   - Link to parent specification or epic if applicable
+
+2. **Issue Assignment** (Work Begins):
+   - Update issue status when work begins
+   - Add `in-progress` label
+   - Comment on issue with implementation approach or questions
+   - Reference the feature branch being created
+
+3. **Issue Progress Updates**:
+   - Comment on issue for significant progress milestones
+   - Update checklist items in issue description as completed
+   - Tag stakeholders for review or input when needed
+   - Document any blockers or challenges encountered
+
+4. **Issue Closure** (Task Completion):
+   - Close issue when task is complete and merged
+   - Reference the closing pull request using keywords: `Closes #XX`, `Fixes #XX`, or `Resolves #XX`
+   - Add `completed` label
+   - Verify all acceptance criteria are met before closing
+
+**Issue Linking and Traceability**:
+
+- Every feature branch MUST reference its issue number in the branch name: `feature/123-description`
+- Every commit SHOULD reference related issues: `feat: implement vpc module (ref #123)`
+- Pull requests MUST reference issues they address: `Closes #123`
+- Specification documents MUST reference related issues when they exist
+
+**Issue Labels and Organization**:
+
+Required labels:
+- `speckit` - All issues created by speckit.implement
+- `infrastructure` - Infrastructure-related tasks
+- `terraform` - Terraform code development
+- `spec-XXX` - Specification identifier
+- `todo` - Not yet started
+- `in-progress` - Currently being worked on
+- `blocked` - Waiting on dependencies
+- `review` - Ready for review
+- `completed` - Task finished
+
+Optional labels:
+- `bug` - Bug fixes
+- `enhancement` - Feature additions
+- `documentation` - Documentation updates
+- `testing` - Testing-related tasks
+- `security` - Security-related work
+- `priority:high` / `priority:medium` / `priority:low` - Priority levels
+
+**Issue Templates**:
+
+Repository SHOULD include issue templates for common task types:
+- Infrastructure Task (`.github/ISSUE_TEMPLATE/infrastructure-task.md`)
+- Bug Report (`.github/ISSUE_TEMPLATE/bug-report.md`)
+- Module Request (`.github/ISSUE_TEMPLATE/module-request.md`)
+- Specification Implementation (`.github/ISSUE_TEMPLATE/spec-implementation.md`)
+
+**Automation and Integration**:
+
+- GitHub Actions MAY be configured to automatically:
+  - Apply labels based on branch names or file paths
+  - Update issue status based on pull request state
+  - Post test results to related issues
+  - Notify stakeholders of issue state changes
+- Project boards MAY be used to visualize issue workflow
+- Milestones SHOULD group related issues by specification or release
+
+**Reporting and Metrics**:
+
+- speckit.implement SHOULD track:
+  - Number of issues created per specification
+  - Average time from issue creation to closure
+  - Number of blocked issues and resolution time
+  - Issue completion rate
+- Weekly summaries MAY be posted as comments on specification issues
+
+**Error Handling and Issue Recovery**:
+
+- If issue creation fails, speckit.implement MUST log the error and retry
+- Failed API calls MUST be documented in `tool_errors_output.log`
+- Issues orphaned by failed operations SHOULD be identified and cleaned up
+- Manual issue creation fallback MUST be available if automation fails
+
+**Best Practices**:
+
+- Keep issues focused on single, discrete tasks (small scope)
+- Use clear, descriptive titles without jargon
+- Update issues promptly with progress and blockers
+- Link related issues to provide context
+- Use issue comments for discussions rather than external channels
+- Archive or close stale issues after 30 days of inactivity
+- Use issue templates to maintain consistency
+
+---
+
+## XIII. Implementation Checklist
 
 ### For Application Teams Using AI Agents
 
@@ -1255,6 +1403,8 @@ This infrastructure code has been validated using ephemeral HCP Terraform worksp
 
 - [ ] Clone validated pattern template repository
 - [ ] Review this constitution with your team
+- [ ] Enable GitHub Issues in repository settings
+- [ ] Configure GitHub Issues access for speckit.implement (PAT or GitHub App with repo scope)
 - [ ] Create specification document in `/specs` directory (SPEC-001, SPEC-002, etc.)
 - [ ] Include all specification sections: purpose, scope, compliance, requirements, success criteria
 - [ ] Review specification with stakeholders
@@ -1263,24 +1413,28 @@ This infrastructure code has been validated using ephemeral HCP Terraform worksp
 
 **Implementation Workflow**:
 
-- [ ] Create feature branch with specification ID: `feature/spec-001-description`
+- [ ] Create or review GitHub issue for the task with specification reference
+- [ ] Create feature branch with issue number and specification ID: `feature/123-spec-001-description`
+- [ ] Update GitHub issue with `in-progress` label and feature branch reference
 - [ ] Use `search_private_modules` tool to identify required modules from private registry
 - [ ] Configure IDE with AI assistant (Copilot, Claude Code, etc.)
 - [ ] Generate Terraform code following specification requirements
 - [ ] Add inline comments linking code to specification sections
 - [ ] Validate code with `terraform validate` and `terraform fmt` (note: do NOT run `terraform init` or `terraform plan` locally)
-- [ ] Commit code with message: `feat: Implement SPEC-001 - Description`
+- [ ] Update GitHub issue with progress comments
+- [ ] Commit code with message: `feat: Implement SPEC-001 - Description (ref #123)`
 - [ ] Push feature branch to remote
 
 **Testing and Promotion Workflow**:
 
-- [ ] Create pull request from feature branch to dev with specification reference
+- [ ] Create pull request from feature branch to dev with specification and issue reference (e.g., "Closes #123")
 - [ ] Verify acceptance criteria from specification in PR description
 - [ ] Ensure human review validates code matches specification
-- [ ] Upon approval, merge feature branch and delete it
+- [ ] Upon approval, merge feature branch and delete it (GitHub issue auto-closes via PR merge)
 - [ ] Commit and push to trigger HCP Terraform VCS workflow
 - [ ] Review plan output in HCP Terraform UI
 - [ ] Deploy to dev environment and validate against specification success criteria
+- [ ] Comment on closed issue with deployment results
 - [ ] Create PR from dev to staging for promotion
 - [ ] Upon staging sign-off, create PR from staging to main
 - [ ] Progress through production with approval gates
@@ -1290,6 +1444,12 @@ This infrastructure code has been validated using ephemeral HCP Terraform worksp
 
 - [ ] Publish this constitution to organization knowledge base
 - [ ] Create starter templates embodying these principles
+- [ ] Enable GitHub Issues on all infrastructure repositories
+- [ ] Configure GitHub Issue templates for common task types
+- [ ] Set up required labels (`speckit`, `infrastructure`, `terraform`, etc.)
+- [ ] Configure GitHub Actions for automated issue management (optional)
+- [ ] Provide GitHub access credentials for speckit.implement
+- [ ] Create GitHub Project boards for issue visualization (optional)
 - [ ] Document module catalog with usage examples
 - [ ] Configure workspace-level security policies and controls
 - [ ] Establish workspace provisioning workflow
@@ -1299,7 +1459,7 @@ This infrastructure code has been validated using ephemeral HCP Terraform worksp
 
 ---
 
-## XIII. References and Resources
+## XIV. References and Resources
 
 ### Internal Resources
 
@@ -1326,6 +1486,14 @@ This infrastructure code has been validated using ephemeral HCP Terraform worksp
 
 ### Change Log
 
+- **v2.1.0** (January 2026): Added GitHub Issues integration for task management
+  - Requirement: speckit.implement MUST manage all tasks as GitHub issues
+  - Requirement: Issues MUST include specification references and traceability
+  - Requirement: Issue lifecycle management (Creation → Assignment → Progress → Closure)
+  - Enhancement: Issue templates for common infrastructure task types
+  - Enhancement: Issue labeling and organization standards
+  - Enhancement: Automated issue linking with branches, commits, and pull requests
+  - Enhancement: Error handling and recovery for issue management operations
 - **v2.0.0** (January 2026): Added specification-driven development and gitflow branch naming strategies
   - Requirement: Infrastructure code MUST be driven by written specifications
   - Requirement: Gitflow branching model with standardized naming conventions
