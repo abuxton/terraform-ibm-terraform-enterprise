@@ -1393,6 +1393,241 @@ Repository SHOULD include issue templates for common task types:
 - Archive or close stale issues after 30 days of inactivity
 - Use issue templates to maintain consistency
 
+### 12.2 Jira CLI Integration
+
+**Principle**: When using Jira as the primary issue tracking system, speckit.implement MUST manage all development tasks as Jira issues using the Jira CLI to provide visibility, traceability, and programmatic automation for infrastructure development work.
+
+**Rationale**: Jira provides enterprise-grade issue tracking with workflow automation, custom fields, and integration capabilities. The Jira CLI enables programmatic access to Jira operations, enabling AI agents to automate task management while maintaining consistency with organizational processes. CLI access provides a scriptable alternative to GitHub Issues for organizations with existing Jira investments.
+
+**Installation and Setup**:
+
+- Jira CLI MUST be installed and available in the development environment
+- Installation: `brew install jira-cli` (macOS) or `npm install -g jira-cli` (alternative)
+- Configuration file MUST be created at `~/.jira` or environment variable `JIRA_CONFIG`
+- Jira instance URL, username, and API token MUST be configured securely
+- API token MUST NOT be committed to version control
+- Configuration SHOULD use environment variables for sensitive values:
+  - `JIRA_HOST`: Jira instance URL (e.g., `https://org.atlassian.net`)
+  - `JIRA_USER`: Jira username or email
+  - `JIRA_TOKEN`: API token (generated from Jira Account Settings)
+  - `JIRA_PROJECT`: Default project key for issue operations
+
+**Access Control**:
+
+- speckit.implement MUST have Jira API token with appropriate permissions
+- Token MUST have permissions to: view issues, create issues, edit issues, transition issues, add comments
+- Token MUST NOT have administrative or deletion permissions
+- Credentials MUST be securely stored in environment variables or credential manager
+- Credentials MUST never be committed to version control or logged in output
+- API token scope MUST be limited to required operations only
+
+**Issue Creation via Jira CLI**:
+
+- speckit.implement MUST create a Jira issue for each discrete task identified during specification implementation
+- Issues MUST be created with the `jira create` command
+- Issues MUST include:
+  - **Summary**: Clear, actionable task description (e.g., "Implement VPC module for dev environment")
+  - **Description**: Detailed task requirements, acceptance criteria, and specification reference
+  - **Issue Type**: e.g., Feature, Task, Story (match organizational standards)
+  - **Project**: Project key matching the repository (e.g., "INFRA", "TF", "AWS")
+  - **Labels**: Appropriate labels for categorization (e.g., `infrastructure`, `terraform`, `speckit`, specification ID)
+  - **Custom Fields**: Organization-specific fields (e.g., `Specification ID`, `Cost Impact`)
+  - **Parent Issue** (Epic): Link to parent specification epic if applicable
+
+**Jira CLI Command Examples**:
+
+```bash
+# Create a new task with specification reference
+jira create \
+  --project INFRA \
+  --type Task \
+  --summary "Implement VPC module for dev environment" \
+  --description "Specification: SPEC-001
+
+Detailed implementation of VPC infrastructure module for development environment.
+
+Acceptance Criteria:
+- VPC created with specified CIDR block
+- Flow logs enabled for network monitoring
+- Tags applied per organizational standards
+
+See specification: /specs/SPEC-001.md" \
+  --label infrastructure \
+  --label terraform \
+  --label spec-001 \
+  --assignee current_user
+
+# Transition issue to In Progress
+jira transition "INFRA-123" --resolution "In Progress"
+
+# Add comment documenting progress
+jira comment "INFRA-123" "Implementation started on feature/123-vpc-module. PR: #456"
+
+# Update issue with acceptance test results
+jira edit "INFRA-123" --comment "Acceptance tests passed. Testing validates:
+- VPC created with 10.0.0.0/16 CIDR
+- Flow logs configured for CloudWatch Logs
+- Tags applied: Environment=dev, ManagedBy=terraform"
+
+# Close issue
+jira transition "INFRA-123" --resolution "Done"
+```
+
+**Issue Lifecycle Management**:
+
+1. **Issue Creation** (Initial Task Identification):
+   - Create issue using `jira create` command when task is identified from specification
+   - Assign to `speckit.implement` user or workflow group
+   - Set status to `To Do`
+   - Apply labels: `speckit`, `infrastructure`, specification ID (e.g., `spec-001`)
+   - Link to parent epic or specification issue if applicable
+
+2. **Issue Assignment** (Work Begins):
+   - Update issue status to `In Progress` using `jira transition`
+   - Add comment documenting the feature branch being created
+   - Reference Jira issue key in git branch: `feature/INFRA-123-vpc-module`
+   - Reference issue in initial commit: `feat: start INFRA-123 vpc module implementation`
+
+3. **Issue Progress Updates**:
+   - Use `jira comment` to document significant progress milestones
+   - Update acceptance criteria checklist in description as items complete
+   - Use `jira edit` to update custom fields (e.g., estimated cost, resource count)
+   - Tag stakeholders in comments for review or input when needed
+   - Document blockers or challenges in issue comments
+
+4. **Issue Closure** (Task Completion):
+   - Transition issue to `Done` or `Resolved` when task complete and merged
+   - Add final comment referencing the merged pull request
+   - Verify all acceptance criteria are met before closing
+   - Include validation results and deployment confirmation
+   - Archive or link to follow-up issues if needed
+
+**Issue Linking and Traceability**:
+
+- Every feature branch MUST reference its Jira issue key in branch name: `feature/INFRA-123-description`
+- Every commit SHOULD reference related Jira issues: `feat: implement vpc module (ref INFRA-123)`
+- Pull requests MUST reference Jira issues they address (GitHub PR will link to Jira via bot or manual link)
+- Specification documents MUST reference related Jira issues when they exist
+- Jira issues MUST include specification link in description for bidirectional traceability
+
+**Jira Fields and Organization**:
+
+Standard issue type: `Task`
+
+Recommended custom fields:
+- `Specification ID`: Link to driving specification (SPEC-001, SPEC-002, etc.)
+- `Terraform Module`: Module being implemented (module name or URL)
+- `Environment`: Deployment environment (dev, staging, prod)
+- `Cost Impact`: Estimated costs (for financial tracking)
+- `Resource Count`: Number of resources being created
+
+Required labels:
+- `speckit` - All issues created by speckit.implement
+- `infrastructure` - Infrastructure-related tasks
+- `terraform` - Terraform code development
+- `spec-XXX` - Specification identifier
+- Any organizational-specific labels
+
+Standard workflow transitions:
+- `To Do` → `In Progress`: When work begins
+- `In Progress` → `In Review`: When pull request is created
+- `In Review` → `Done`: When merged to target branch
+- Any state → `Blocked`: When waiting on dependencies
+
+**Issue Query Examples**:
+
+```bash
+# List all in-progress speckit tasks for current sprint
+jira list --project INFRA --label speckit --status "In Progress"
+
+# Find all issues blocking deployment
+jira list --project INFRA --label terraform --status Blocked
+
+# Get details of specific issue
+jira view INFRA-123
+
+# List all issues for specification SPEC-001
+jira list --project INFRA --label spec-001
+```
+
+**Automation and Integration**:
+
+- CLI scripts MAY be created to automate common operations:
+  - Auto-create issues from specification documents
+  - Bulk transition issues when pull requests are merged
+  - Post test results to issue comments
+  - Create follow-up issues from specification sections
+
+- Webhooks or scripts MAY listen for:
+  - Git push events to auto-transition issues to `In Progress`
+  - Pull request merges to auto-transition issues to `Done`
+  - Failed CI/CD runs to comment on related issues
+
+- Integration patterns:
+  - Issue key in git branch → automation identifies related issue
+  - Commit messages reference issue key → Jira auto-links commits
+  - Pull request references issue → cross-links in both systems
+  - Merged PR triggers issue transition → automatic status update
+
+**Error Handling and Recovery**:
+
+- If issue creation fails via CLI, speckit.implement MUST log the error and retry
+- Failed API calls MUST be documented in `tool_errors_output.log` with:
+  - Command attempted (with sensitive data redacted)
+  - Error message and error code
+  - Number of retry attempts
+  - Resolution steps taken
+
+- Common error patterns and resolutions:
+  - `Connection refused`: Check JIRA_HOST is correct and accessible
+  - `Authentication failed`: Verify JIRA_USER and JIRA_TOKEN are correct
+  - `Project not found`: Confirm JIRA_PROJECT key is correct
+  - `Invalid transition`: Verify target status is valid for current workflow
+
+- Fallback procedures:
+  - Manual issue creation in Jira UI if CLI fails
+  - Batch retry of failed operations once connectivity restored
+  - Document failed operations with timestamps for manual review
+
+**CLI Security Best Practices**:
+
+- API token MUST be stored in environment-specific config, not in repository
+- Example `.zshrc` or `.bashrc` configuration:
+  ```bash
+  export JIRA_HOST="https://org.atlassian.net"
+  export JIRA_USER="your-email@org.com"
+  export JIRA_PROJECT="INFRA"
+  # JIRA_TOKEN should come from secure credential manager
+  export JIRA_TOKEN=$(pass show jira/api-token 2>/dev/null || echo "")
+  ```
+
+- Never pipe sensitive data through logs or debugging output
+- Clear command history that contains credentials: `history -c`
+- Rotate API tokens periodically (at least annually)
+
+**GitHub-Jira Interoperability**:
+
+When both GitHub and Jira are in use:
+
+- GitHub issues MAY be used for public discussions and community contributions
+- Jira issues MUST be used for internal infrastructure task tracking
+- Branch naming MUST reference Jira issue key (primary tracking system)
+- GitHub PR SHOULD include comment linking to Jira issue for cross-reference
+- Specification traceability follows Jira issue, with GitHub PR as secondary link
+- Automated sync MAY be configured to mirror issue state between systems
+- Status of record: Jira (source of truth), GitHub (informational link)
+
+**Best Practices**:
+
+- Keep issues focused on single, discrete tasks (small scope)
+- Use clear, descriptive summaries without jargon
+- Include specification reference in all issue descriptions
+- Update issues promptly with progress, blockers, and questions
+- Use standard transitions for consistent workflow tracking
+- Close issues only when acceptance criteria verified
+- Include measurement results (costs, resources, time) in issue comments
+- Use bulk operations for consistency (e.g., transition all spec-X issues when spec approved)
+
 ---
 
 ## XIII. Implementation Checklist
@@ -1403,8 +1638,12 @@ Repository SHOULD include issue templates for common task types:
 
 - [ ] Clone validated pattern template repository
 - [ ] Review this constitution with your team
-- [ ] Enable GitHub Issues in repository settings
-- [ ] Configure GitHub Issues access for speckit.implement (PAT or GitHub App with repo scope)
+- [ ] Select issue tracking system: GitHub Issues or Jira (or both for hybrid environments)
+- [ ] Enable GitHub Issues in repository settings (if using GitHub)
+- [ ] Configure GitHub Issues access for speckit.implement (PAT or GitHub App with repo scope) (if using GitHub)
+- [ ] Configure Jira CLI access for speckit.implement (API token with appropriate scope) (if using Jira)
+- [ ] Create Jira project key matching repository if using Jira (e.g., INFRA, TF, AWS)
+- [ ] Set up required labels and custom fields in Jira (if using Jira)
 - [ ] Create specification document in `/specs` directory (SPEC-001, SPEC-002, etc.)
 - [ ] Include all specification sections: purpose, scope, compliance, requirements, success criteria
 - [ ] Review specification with stakeholders
@@ -1413,24 +1652,24 @@ Repository SHOULD include issue templates for common task types:
 
 **Implementation Workflow**:
 
-- [ ] Create or review GitHub issue for the task with specification reference
-- [ ] Create feature branch with issue number and specification ID: `feature/123-spec-001-description`
-- [ ] Update GitHub issue with `in-progress` label and feature branch reference
+- [ ] Create or review issue (GitHub or Jira) for the task with specification reference
+- [ ] Create feature branch with issue number and specification ID: `feature/123-spec-001-description` (GitHub) or `feature/INFRA-123-spec-001-description` (Jira)
+- [ ] Update issue with `in-progress` status and feature branch reference
 - [ ] Use `search_private_modules` tool to identify required modules from private registry
 - [ ] Configure IDE with AI assistant (Copilot, Claude Code, etc.)
 - [ ] Generate Terraform code following specification requirements
 - [ ] Add inline comments linking code to specification sections
 - [ ] Validate code with `terraform validate` and `terraform fmt` (note: do NOT run `terraform init` or `terraform plan` locally)
-- [ ] Update GitHub issue with progress comments
-- [ ] Commit code with message: `feat: Implement SPEC-001 - Description (ref #123)`
+- [ ] Update issue with progress comments
+- [ ] Commit code with message: `feat: Implement SPEC-001 - Description (ref #123)` (GitHub) or `feat: Implement SPEC-001 - Description (ref INFRA-123)` (Jira)
 - [ ] Push feature branch to remote
 
 **Testing and Promotion Workflow**:
 
-- [ ] Create pull request from feature branch to dev with specification and issue reference (e.g., "Closes #123")
+- [ ] Create pull request from feature branch to dev with specification and issue reference (e.g., "Closes #123" for GitHub or "Closes INFRA-123" for Jira)
 - [ ] Verify acceptance criteria from specification in PR description
 - [ ] Ensure human review validates code matches specification
-- [ ] Upon approval, merge feature branch and delete it (GitHub issue auto-closes via PR merge)
+- [ ] Upon approval, merge feature branch and delete it (GitHub issue auto-closes via PR merge; for Jira, manually transition to Done)
 - [ ] Commit and push to trigger HCP Terraform VCS workflow
 - [ ] Review plan output in HCP Terraform UI
 - [ ] Deploy to dev environment and validate against specification success criteria
@@ -1444,12 +1683,18 @@ Repository SHOULD include issue templates for common task types:
 
 - [ ] Publish this constitution to organization knowledge base
 - [ ] Create starter templates embodying these principles
-- [ ] Enable GitHub Issues on all infrastructure repositories
-- [ ] Configure GitHub Issue templates for common task types
-- [ ] Set up required labels (`speckit`, `infrastructure`, `terraform`, etc.)
-- [ ] Configure GitHub Actions for automated issue management (optional)
-- [ ] Provide GitHub access credentials for speckit.implement
-- [ ] Create GitHub Project boards for issue visualization (optional)
+- [ ] Select and configure issue tracking system: GitHub Issues, Jira, or both
+- [ ] Enable GitHub Issues on all infrastructure repositories (if using GitHub)
+- [ ] Configure GitHub Issue templates for common task types (if using GitHub)
+- [ ] Set up required labels (`speckit`, `infrastructure`, `terraform`, etc.) in GitHub (if using GitHub)
+- [ ] Configure GitHub Actions for automated issue management (optional, if using GitHub)
+- [ ] Provide GitHub access credentials for speckit.implement (if using GitHub)
+- [ ] Create GitHub Project boards for issue visualization (optional, if using GitHub)
+- [ ] Configure Jira project templates and workflows for infrastructure teams (if using Jira)
+- [ ] Set up required labels and custom fields in Jira (if using Jira)
+- [ ] Provide Jira API token and CLI access for speckit.implement (if using Jira)
+- [ ] Create Jira automation rules for issue transitions and notifications (if using Jira)
+- [ ] Configure Jira webhooks for GitHub PR linkage (if using both systems)
 - [ ] Document module catalog with usage examples
 - [ ] Configure workspace-level security policies and controls
 - [ ] Establish workspace provisioning workflow
@@ -1483,9 +1728,19 @@ Repository SHOULD include issue templates for common task types:
 - [AWS Terraform Provider Best Practices](https://docs.aws.amazon.com/prescriptive-guidance/latest/terraform-aws-provider-best-practices/)
 - [Azure Terraform Best Practices](https://docs.microsoft.com/en-us/azure/developer/terraform/best-practices)
 - [Google Cloud Terraform Best Practices](https://cloud.google.com/docs/terraform/best-practices-for-terraform)
+- [Jira CLI Documentation](https://github.com/ankitpokhrel/jira-cli)
+- [Jira REST API](https://developer.atlassian.com/cloud/jira/rest/v3)
+- [Jira API Token Generation](https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/)
 
 ### Change Log
 
+- **v2.2.0** (February 2026): Added Jira CLI integration and hybrid tracking support
+  - Enhancement: Jira CLI integration as alternative to GitHub Issues
+  - Enhancement: Jira-specific CLI commands and scripting patterns
+  - Enhancement: GitHub-Jira interoperability guidance for hybrid environments
+  - Enhancement: Jira security best practices and error handling
+  - Enhancement: Updated implementation checklists for both platforms
+  - Enhancement: Specification traceability across GitHub and Jira systems
 - **v2.1.0** (January 2026): Added GitHub Issues integration for task management
   - Requirement: speckit.implement MUST manage all tasks as GitHub issues
   - Requirement: Issues MUST include specification references and traceability
